@@ -84,6 +84,16 @@ export const updateStaffStatus = async (requestId, status) => {
     return response.data;
 };
 
+export const submitStaffRequest = async (title, description) => {
+    const response = await api.post('/staff/request', { title, description });
+    return response.data;
+};
+
+export const getStaffMyRequests = async () => {
+    const response = await api.get('/staff/my-requests');
+    return response.data;
+};
+
 // ============================================
 // HOD APIs
 // ============================================
@@ -108,6 +118,7 @@ export const getAllRequests = async (filters = {}) => {
     if (filters.status) params.append('status', filters.status);
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.requesterRole) params.append('requesterRole', filters.requesterRole);
 
     const response = await api.get(`/admin/requests?${params.toString()}`);
     return response.data;

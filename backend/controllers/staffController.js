@@ -7,8 +7,11 @@ const Request = require('../models/Request');
  */
 const getPendingRequests = async (req, res) => {
     try {
-        // Fetch requests where staff approval is pending
-        const requests = await Request.find({ staffStatus: 'pending' })
+        // Fetch requests where staff approval is pending AND requester is a student
+        const requests = await Request.find({
+            staffStatus: 'pending',
+            requesterRole: 'student'
+        })
             .populate('studentId', 'name email')
             .sort({ createdAt: -1 }); // Most recent first
 
@@ -88,7 +91,80 @@ const updateRequestStatus = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Submit own staff request (leave/academic)
+ * @route   POST /api/staff/request
+ * @access  Private (Staff only)
+ */
+const submitMyRequest = async (req, res) => {
+    try {
+        const { title, description } = req.body;
+
+        if (!title || !description) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide title and description'
+            });
+        }
+
+        // Create request with staff as requester
+        // Staff requests skip staffStatus pending (auto-approved by self)
+        const request = await Request.create({
+            studentId: req.user._id,
+            requesterRole: 'staff',
+            title,
+            description,
+            staffStatus: 'approved', // Auto-approved
+            hodStatus: 'pending',
+            finalStatus: 'pending',
+            staffUpdatedAt: Date.now()
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Your request has been submitted directly to HOD',
+            request
+        });
+    } catch (error) {
+        console.error('Staff submit request error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error submitting request',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * @desc    Get all requests submitted by the staff member
+ * @route   GET /api/staff/my-requests
+ * @access  Private (Staff only)
+ */
+const getMyRequests = async (req, res) => {
+    try {
+        const requests = await Request.find({
+            studentId: req.user._id,
+            requesterRole: 'staff'
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            count: requests.length,
+            requests
+        });
+    } catch (error) {
+        console.error('Staff get my requests error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching your requests',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getPendingRequests,
-    updateRequestStatus
+    updateRequestStatus,
+    submitMyRequest,
+    getMyRequests
 };

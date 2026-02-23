@@ -7,12 +7,16 @@ const Request = require('../models/Request');
  */
 const getApprovedRequests = async (req, res) => {
     try {
-        // Fetch requests where staff approved AND HOD approval is pending
+        // Fetch requests where:
+        // 1. Student request that is staff-approved AND HOD pending
+        // 2. Staff self-request that is HOD pending
         const requests = await Request.find({
-            staffStatus: 'approved',
-            hodStatus: 'pending'
+            $or: [
+                { requesterRole: 'student', staffStatus: 'approved', hodStatus: 'pending' },
+                { requesterRole: 'staff', hodStatus: 'pending' }
+            ]
         })
-            .populate('studentId', 'name email')
+            .populate('studentId', 'name email role')
             .sort({ createdAt: -1 }); // Most recent first
 
         res.status(200).json({

@@ -7,13 +7,17 @@ const Request = require('../models/Request');
  */
 const getAllRequests = async (req, res) => {
     try {
-        const { studentId, status, startDate, endDate } = req.query;
+        const { studentId, status, startDate, endDate, requesterRole } = req.query;
 
         // Build filter object
         const filter = {};
 
         if (studentId) {
             filter.studentId = studentId;
+        }
+
+        if (requesterRole) {
+            filter.requesterRole = requesterRole;
         }
 
         if (status) {
@@ -41,8 +45,11 @@ const getAllRequests = async (req, res) => {
             pending: requests.filter(r => r.finalStatus === 'pending').length,
             approved: requests.filter(r => r.finalStatus === 'approved').length,
             rejected: requests.filter(r => r.finalStatus === 'rejected').length,
-            staffPending: requests.filter(r => r.staffStatus === 'pending').length,
-            hodPending: requests.filter(r => r.hodStatus === 'pending' && r.staffStatus === 'approved').length
+            staffPending: requests.filter(r => r.requesterRole === 'student' && r.staffStatus === 'pending').length,
+            hodPending: requests.filter(r =>
+                (r.requesterRole === 'student' && r.staffStatus === 'approved' && r.hodStatus === 'pending') ||
+                (r.requesterRole === 'staff' && r.hodStatus === 'pending')
+            ).length
         };
 
         res.status(200).json({

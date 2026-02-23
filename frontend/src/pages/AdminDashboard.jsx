@@ -4,16 +4,19 @@ import { getAllRequests } from '../services/api';
 
 /**
  * Admin Dashboard Component
- * Displays all requests with filtering and comprehensive statistics
+ * View all requests with filtering by role, status, and date
  */
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const [user, setUser] = useState(null);
-    const [stats, setStats] = useState({});
     const [requests, setRequests] = useState([]);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
+
+    // Filters
     const [filters, setFilters] = useState({
         status: '',
+        requesterRole: '',
         startDate: '',
         endDate: ''
     });
@@ -21,39 +24,43 @@ const AdminDashboard = () => {
     useEffect(() => {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         setUser(userData);
-        fetchRequests();
+        fetchData();
     }, []);
 
-    const fetchRequests = async (appliedFilters = {}) => {
+    const fetchData = async (currentFilters = filters) => {
         setLoading(true);
         try {
-            const response = await getAllRequests(appliedFilters);
+            const response = await getAllRequests(currentFilters);
             if (response.success) {
-                setStats(response.stats);
                 setRequests(response.requests);
+                setStats(response.stats);
             }
         } catch (error) {
-            console.error('Error fetching requests:', error);
+            console.error('Error fetching admin data:', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleFilterChange = (e) => {
-        setFilters({ ...filters, [e.target.name]: e.target.value });
+        const newFilters = { ...filters, [e.target.name]: e.target.value };
+        setFilters(newFilters);
     };
 
-    const handleApplyFilters = () => {
-        const appliedFilters = {};
-        if (filters.status) appliedFilters.status = filters.status;
-        if (filters.startDate) appliedFilters.startDate = filters.startDate;
-        if (filters.endDate) appliedFilters.endDate = filters.endDate;
-        fetchRequests(appliedFilters);
+    const applyFilters = (e) => {
+        e.preventDefault();
+        fetchData();
     };
 
-    const handleClearFilters = () => {
-        setFilters({ status: '', startDate: '', endDate: '' });
-        fetchRequests();
+    const resetFilters = () => {
+        const defaultFilters = {
+            status: '',
+            requesterRole: '',
+            startDate: '',
+            endDate: ''
+        };
+        setFilters(defaultFilters);
+        fetchData(defaultFilters);
     };
 
     const handleLogout = () => {
@@ -72,140 +79,141 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="dashboard-container">
+        <div className="dashboard-container" style={{ maxWidth: '1200px' }}>
             <header className="dashboard-header">
                 <div>
-                    <h1>Admin Dashboard</h1>
-                    <p>Welcome, {user?.name}</p>
+                    <h1>Admin Control Panel</h1>
+                    <p>System Overview & Request Monitoring</p>
                 </div>
                 <button onClick={handleLogout} className="btn-secondary">Logout</button>
             </header>
 
             {/* Statistics Cards */}
-            <div className="stats-grid admin-stats">
-                <div className="stat-card">
-                    <h3>{stats.total || 0}</h3>
-                    <p>Total Requests</p>
+            {stats && (
+                <div className="stats-container">
+                    <div className="stat-card">
+                        <span className="stat-value">{stats.total}</span>
+                        <span className="stat-label">Total Requests</span>
+                    </div>
+                    <div className="stat-card">
+                        <span className="stat-value text-pending">{stats.pending}</span>
+                        <span className="stat-label">Pending</span>
+                    </div>
+                    <div className="stat-card">
+                        <span className="stat-value text-approved">{stats.approved}</span>
+                        <span className="stat-label">Approved</span>
+                    </div>
+                    <div className="stat-card">
+                        <span className="stat-value text-rejected">{stats.rejected}</span>
+                        <span className="stat-label">Rejected</span>
+                    </div>
                 </div>
-                <div className="stat-card stat-pending">
-                    <h3>{stats.pending || 0}</h3>
-                    <p>Pending Final</p>
-                </div>
-                <div className="stat-card stat-approved">
-                    <h3>{stats.approved || 0}</h3>
-                    <p>Approved</p>
-                </div>
-                <div className="stat-card stat-rejected">
-                    <h3>{stats.rejected || 0}</h3>
-                    <p>Rejected</p>
-                </div>
-                <div className="stat-card stat-info">
-                    <h3>{stats.staffPending || 0}</h3>
-                    <p>Awaiting Staff</p>
-                </div>
-                <div className="stat-card stat-info">
-                    <h3>{stats.hodPending || 0}</h3>
-                    <p>Awaiting HOD</p>
-                </div>
+            )}
+
+            {/* Filters Section */}
+            <div className="card filter-card" style={{ marginBottom: '25px' }}>
+                <h3>Filter Requests</h3>
+                <form onSubmit={applyFilters} className="filter-form">
+                    <div className="filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                        <div className="form-group">
+                            <label>Role</label>
+                            <select name="requesterRole" value={filters.requesterRole} onChange={handleFilterChange}>
+                                <option value="">All Roles</option>
+                                <option value="student">Student</option>
+                                <option value="staff">Staff</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Status</label>
+                            <select name="status" value={filters.status} onChange={handleFilterChange}>
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>From Date</label>
+                            <input
+                                type="date"
+                                name="startDate"
+                                value={filters.startDate}
+                                onChange={handleFilterChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>To Date</label>
+                            <input
+                                type="date"
+                                name="endDate"
+                                value={filters.endDate}
+                                onChange={handleFilterChange}
+                            />
+                        </div>
+                    </div>
+                    <div className="filter-actions" style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                        <button type="submit" className="btn-primary">Apply Filters</button>
+                        <button type="button" onClick={resetFilters} className="btn-secondary">Reset</button>
+                    </div>
+                </form>
             </div>
 
-            {/* Filters */}
+            {/* Requests Table */}
             <div className="card">
-                <h2>Filter Requests</h2>
-                <div className="filter-grid">
-                    <div className="form-group">
-                        <label htmlFor="status">Final Status</label>
-                        <select
-                            id="status"
-                            name="status"
-                            value={filters.status}
-                            onChange={handleFilterChange}
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="startDate">Start Date</label>
-                        <input
-                            type="date"
-                            id="startDate"
-                            name="startDate"
-                            value={filters.startDate}
-                            onChange={handleFilterChange}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="endDate">End Date</label>
-                        <input
-                            type="date"
-                            id="endDate"
-                            name="endDate"
-                            value={filters.endDate}
-                            onChange={handleFilterChange}
-                        />
-                    </div>
-                </div>
-                <div className="filter-actions">
-                    <button onClick={handleApplyFilters} className="btn-primary">
-                        Apply Filters
-                    </button>
-                    <button onClick={handleClearFilters} className="btn-secondary">
-                        Clear Filters
-                    </button>
-                </div>
-            </div>
-
-            {/* All Requests */}
-            <div className="card">
-                <h2>All Requests ({requests.length})</h2>
+                <h2>System Requests</h2>
                 {loading ? (
-                    <p>Loading requests...</p>
+                    <p>Loading system data...</p>
                 ) : requests.length === 0 ? (
-                    <p className="no-data">No requests found.</p>
+                    <p className="no-data">No requests matching the selected filters.</p>
                 ) : (
                     <div className="table-container">
-                        <table className="requests-table admin-table">
+                        <table className="requests-table">
                             <thead>
                                 <tr>
-                                    <th>Student</th>
+                                    <th>Requester</th>
+                                    <th>Role</th>
                                     <th>Title</th>
-                                    <th>Description</th>
                                     <th>Staff Status</th>
                                     <th>HOD Status</th>
-                                    <th>Final Status</th>
-                                    <th>Submitted</th>
+                                    <th>Final</th>
+                                    <th>Date</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {requests.map((request) => (
-                                    <tr key={request._id}>
+                                {requests.map((req) => (
+                                    <tr key={req._id}>
                                         <td>
-                                            <div className="student-info">
-                                                <strong>{request.studentId?.name}</strong>
-                                                <small>{request.studentId?.email}</small>
+                                            <div className="user-info">
+                                                <span className="user-name">{req.studentId?.name || 'Unknown'}</span>
+                                                <span className="user-email">{req.studentId?.email}</span>
                                             </div>
                                         </td>
-                                        <td>{request.title}</td>
-                                        <td className="description-cell">{request.description}</td>
                                         <td>
-                                            <span className={`badge ${getStatusBadge(request.staffStatus)}`}>
-                                                {request.staffStatus}
+                                            <span style={{
+                                                textTransform: 'capitalize',
+                                                fontWeight: '600',
+                                                color: req.requesterRole === 'staff' ? '#059669' : '#2563eb'
+                                            }}>
+                                                {req.requesterRole}
+                                            </span>
+                                        </td>
+                                        <td>{req.title}</td>
+                                        <td>
+                                            <span className={`badge ${getStatusBadge(req.staffStatus)}`}>
+                                                {req.staffStatus}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`badge ${getStatusBadge(request.hodStatus)}`}>
-                                                {request.hodStatus}
+                                            <span className={`badge ${getStatusBadge(req.hodStatus)}`}>
+                                                {req.hodStatus}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`badge ${getStatusBadge(request.finalStatus)}`}>
-                                                {request.finalStatus}
+                                            <span className={`badge ${getStatusBadge(req.finalStatus)}`}>
+                                                {req.finalStatus}
                                             </span>
                                         </td>
-                                        <td>{new Date(request.createdAt).toLocaleDateString()}</td>
+                                        <td>{new Date(req.createdAt).toLocaleDateString()}</td>
                                     </tr>
                                 ))}
                             </tbody>

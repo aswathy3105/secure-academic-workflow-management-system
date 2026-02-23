@@ -4,13 +4,13 @@ import { getApprovedRequests, updateHODStatus } from '../services/api';
 
 /**
  * HOD Dashboard Component
- * Displays staff-approved requests for final HOD approval
+ * Displays requests that are either staff-approved (from students) or direct staff self-requests
  */
 const HODDashboard = () => {
     const navigate = useNavigate();
-    const [user, setUser] = useState(null);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
     const [processingId, setProcessingId] = useState(null);
     const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -21,13 +21,14 @@ const HODDashboard = () => {
     }, []);
 
     const fetchRequests = async () => {
+        setLoading(true);
         try {
             const response = await getApprovedRequests();
             if (response.success) {
                 setRequests(response.requests);
             }
         } catch (error) {
-            console.error('Error fetching requests:', error);
+            console.error('Error fetching HOD requests:', error);
         } finally {
             setLoading(false);
         }
@@ -42,9 +43,8 @@ const HODDashboard = () => {
             if (response.success) {
                 setMessage({
                     type: 'success',
-                    text: `Request ${status} successfully! Final decision recorded.`
+                    text: `Request ${status} successfully!`
                 });
-                // Remove the processed request from the list
                 setRequests(requests.filter(req => req._id !== requestId));
             }
         } catch (error) {
@@ -73,46 +73,46 @@ const HODDashboard = () => {
                 <button onClick={handleLogout} className="btn-secondary">Logout</button>
             </header>
 
-            {/* Statistics */}
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <h3>{requests.length}</h3>
-                    <p>Requests Awaiting Final Approval</p>
-                </div>
-            </div>
+            {message.text && (
+                <div className={`message ${message.type}`}>{message.text}</div>
+            )}
 
-            {/* Staff-Approved Requests */}
             <div className="card">
-                <h2>Staff-Approved Requests for Final Decision</h2>
-                {message.text && (
-                    <div className={`message ${message.type}`}>{message.text}</div>
-                )}
+                <h2>Requests Pending Final Decision</h2>
                 {loading ? (
                     <p>Loading requests...</p>
                 ) : requests.length === 0 ? (
-                    <p className="no-data">No requests pending final approval at this time.</p>
+                    <p className="no-data">No pending requests for approval.</p>
                 ) : (
                     <div className="requests-grid">
                         {requests.map((request) => (
                             <div key={request._id} className="request-card">
                                 <div className="request-header">
-                                    <h3>{request.title}</h3>
-                                    <div className="request-meta">
-                                        <span className="badge badge-approved">Staff Approved</span>
-                                        <span className="request-date">
-                                            {new Date(request.createdAt).toLocaleDateString()}
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <h3>{request.title}</h3>
+                                        <span className={`badge badge-role-${request.requesterRole || 'student'}`} style={{
+                                            fontSize: '0.75rem',
+                                            width: 'fit-content',
+                                            marginTop: '4px',
+                                            textTransform: 'uppercase',
+                                            backgroundColor: request.requesterRole === 'staff' ? '#dcfce7' : '#dbeafe',
+                                            color: request.requesterRole === 'staff' ? '#166534' : '#1e40af',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            fontWeight: '600'
+                                        }}>
+                                            {request.requesterRole || 'student'} Request
                                         </span>
                                     </div>
+                                    <span className="request-date">
+                                        {new Date(request.createdAt).toLocaleDateString()}
+                                    </span>
                                 </div>
                                 <div className="request-body">
-                                    <p><strong>Student:</strong> {request.studentId?.name} ({request.studentId?.email})</p>
+                                    <p><strong>From:</strong> {request.studentId?.name} ({request.studentId?.email})</p>
+                                    <p><strong>Status:</strong> <span className="badge badge-approved">Staff Approved</span></p>
                                     <p><strong>Description:</strong></p>
                                     <p className="request-description">{request.description}</p>
-                                    {request.staffUpdatedAt && (
-                                        <p className="text-muted">
-                                            <small>Staff approved on: {new Date(request.staffUpdatedAt).toLocaleDateString()}</small>
-                                        </p>
-                                    )}
                                 </div>
                                 <div className="request-actions">
                                     <button
@@ -127,7 +127,7 @@ const HODDashboard = () => {
                                         className="btn-reject"
                                         disabled={processingId === request._id}
                                     >
-                                        {processingId === request._id ? 'Processing...' : 'Reject'}
+                                        {processingId === request._id ? 'Processing...' : 'Final Reject'}
                                     </button>
                                 </div>
                             </div>

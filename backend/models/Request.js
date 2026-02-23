@@ -9,7 +9,12 @@ const requestSchema = new mongoose.Schema({
     studentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'Student ID is required']
+        required: [true, 'Requester ID is required']
+    },
+    requesterRole: {
+        type: String,
+        enum: ['student', 'staff'],
+        default: 'student'
     },
     title: {
         type: String,
